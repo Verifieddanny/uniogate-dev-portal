@@ -1,0 +1,223 @@
+import type { Endpoint } from './types';
+import { SAMPLE_ACCESS_TOKEN, SAMPLE_BUSINESS_ID, ownerOnly, serverError, unauthorized, validation } from './common';
+
+// Staff, Businesses and Devices: the smaller groups live together here.
+
+export const staff: Endpoint[] = [
+  {
+    slug: 'list-staff',
+    group: 'staff',
+    method: 'GET',
+    path: '/staff',
+    title: 'List sales reps',
+    auth: 'owner',
+    summary: 'The sales reps on this business, a page at a time.',
+    whenToCall: 'On the Staff / Team screen. Load the next page when the user scrolls to the bottom and `meta.hasNextPage` is true.',
+    query: [
+      { name: 'page', type: 'number', required: false, description: 'Page number, starting at 1.', example: 1, rules: 'Default 1.' },
+      { name: 'limit', type: 'number', required: false, description: 'Items per page.', example: 20, rules: 'Default 20, max 100.' },
+    ],
+    responses: [
+      {
+        id: 'ok',
+        status: 200,
+        label: 'Sales reps',
+        when: 'Always (empty `data` when there are none).',
+        ui: 'Name, email and phone per row. Empty state: “No sales reps yet” with an Invite button.',
+        body: {
+          success: true,
+          data: [
+            { id: '8b1f0c2e-1d2a-4f61-9c8e-2b7a4d1e9f00', firstName: 'Tunde', lastName: 'Bello', email: 'tunde@example.com', phoneNumber: '+2348031234567' },
+          ],
+          meta: { total: 1, page: 1, limit: 20, totalPages: 1, hasNextPage: false },
+        },
+      },
+      unauthorized,
+      ownerOnly,
+      serverError('Failed to fetch staff'),
+    ],
+  },
+  {
+    slug: 'remove-staff',
+    group: 'staff',
+    method: 'DELETE',
+    path: '/staff/:staffId',
+    title: 'Remove a sales rep',
+    auth: 'owner',
+    summary: 'Takes a sales rep off the business. Their account stays; they just lose access to this business.',
+    whenToCall: 'From a rep’s row menu, after a confirm dialog (“Remove Tunde? They’ll lose access immediately.”).',
+    pathParams: [{ name: 'staffId', type: 'string', required: true, description: 'The rep’s `id` from List sales reps.', example: '8b1f0c2e-1d2a-4f61-9c8e-2b7a4d1e9f00' }],
+    responses: [
+      {
+        id: 'ok',
+        status: 200,
+        label: 'Removed',
+        when: 'The rep was removed.',
+        ui: 'Remove the row. “Tunde was removed.”',
+        body: { success: true, message: 'Staff member removed successfully.' },
+      },
+      {
+        id: 'not-found',
+        status: 404,
+        label: 'Not found',
+        when: 'Not a sales rep on this business (or already removed).',
+        ui: 'Refresh the list.',
+        body: { success: false, message: 'Staff member not found in this organization.' },
+      },
+      unauthorized,
+      ownerOnly,
+      serverError('Failed to remove staff'),
+    ],
+    notes: ['Their current access token keeps working until it expires (up to 15 minutes).'],
+  },
+];
+
+export const businesses: Endpoint[] = [
+  {
+    slug: 'list-businesses',
+    group: 'business',
+    method: 'GET',
+    path: '/business/list',
+    title: 'List my businesses',
+    auth: 'user',
+    summary: 'Every business the user belongs to, and their role in each.',
+    whenToCall: 'For a business switcher (only show it when there’s more than one).',
+    responses: [
+      {
+        id: 'ok',
+        status: 200,
+        label: 'Businesses',
+        when: 'Always.',
+        ui: 'List with name, city and a role badge (“Owner” / “Sales rep”). Mark the one matching the current token as active.',
+        body: {
+          businesses: [
+            { id: SAMPLE_BUSINESS_ID, name: 'Ada Stores', city: 'Lagos', image: null, role: 'owner' },
+            { id: 'b3327f4f-3276-45cf-955a-4405bcc37097', name: 'Chidi Electronics', city: 'Abuja', image: null, role: 'sales_rep' },
+          ],
+        },
+      },
+      unauthorized,
+      serverError('Failed to list businesses'),
+    ],
+  },
+  {
+    slug: 'switch-business',
+    group: 'business',
+    method: 'POST',
+    path: '/business/switch',
+    title: 'Switch business',
+    auth: 'user',
+    summary: 'Gives a new access token for another business the user belongs to. Everything after this acts on that business.',
+    whenToCall: 'When the user picks a business in the switcher.',
+    body: [{ name: 'businessId', type: 'string', required: true, description: 'An `id` from List my businesses.', example: 'b3327f4f-3276-45cf-955a-4405bcc37097' }],
+    exampleBody: { businessId: 'b3327f4f-3276-45cf-955a-4405bcc37097' },
+    responses: [
+      {
+        id: 'ok',
+        status: 200,
+        label: 'Switched',
+        when: 'The user belongs to that business.',
+        ui: 'Replace the stored access token (keep the refresh token), clear cached data, and reload the home screen for `business.role`.',
+        body: { message: 'Switched business', accessToken: SAMPLE_ACCESS_TOKEN, business: { id: 'b3327f4f-3276-45cf-955a-4405bcc37097', role: 'sales_rep' } },
+      },
+      {
+        id: 'not-member',
+        status: 403,
+        label: 'Not a member',
+        when: 'The user isn’t part of that business (anymore).',
+        ui: 'Refresh the business list.',
+        body: { error: 'You do not belong to this business' },
+      },
+      {
+        id: 'missing',
+        status: 400,
+        label: 'No business chosen',
+        when: '`businessId` wasn’t sent.',
+        ui: 'Developer error: send businessId.',
+        body: { error: 'businessId is required' },
+      },
+      unauthorized,
+      serverError('Failed to switch business'),
+    ],
+    notes: ['Known limitation: a token refresh returns to the user’s first business. Re-switch after refresh if needed. Danny is aware.'],
+  },
+];
+
+export const devices: Endpoint[] = [
+  {
+    slug: 'register-device',
+    group: 'devices',
+    method: 'POST',
+    path: '/devices',
+    title: 'Register device for push',
+    auth: 'user',
+    summary: 'Saves this phone’s or browser’s push token so the user gets notifications (payment received, withdrawal done…).',
+    whenToCall: 'After sign-in, on every app start while signed in, and whenever Firebase gives you a new token.',
+    body: [
+      { name: 'token', type: 'string', required: true, description: 'The Firebase (FCM) registration token. Not an Expo push token.', example: 'fJ3k9…:APA91bH…' },
+      { name: 'platform', type: 'string', required: true, description: 'Which kind of device.', example: 'android', rules: '"android", "ios" or "web".' },
+    ],
+    exampleBody: { token: 'fJ3k9xQ2T0m:APA91bHq…', platform: 'android' },
+    responses: [
+      {
+        id: 'ok',
+        status: 204,
+        label: 'Registered',
+        when: 'Saved (or moved to this user if the device was used by someone else before).',
+        ui: 'Nothing to show. It’s silent.',
+        body: null,
+      },
+      validation('platform', 'Invalid value', 'windows'),
+      unauthorized,
+      serverError('Failed to register device'),
+    ],
+    notes: ['Safe to call repeatedly with the same token.'],
+  },
+  {
+    slug: 'unregister-device',
+    group: 'devices',
+    method: 'DELETE',
+    path: '/devices',
+    title: 'Unregister device',
+    auth: 'user',
+    summary: 'Stops push notifications to this device for this user.',
+    whenToCall: 'On log-out, BEFORE calling Log out and clearing tokens (this call needs the access token).',
+    body: [{ name: 'token', type: 'string', required: true, description: 'The same FCM token you registered.', example: 'fJ3k9xQ2T0m:APA91bHq…' }],
+    exampleBody: { token: 'fJ3k9xQ2T0m:APA91bHq…' },
+    responses: [
+      { id: 'ok', status: 204, label: 'Unregistered', when: 'Always.', ui: 'Continue logging out.', body: null },
+      unauthorized,
+      serverError('Failed to unregister device'),
+    ],
+  },
+  {
+    slug: 'test-push',
+    group: 'devices',
+    method: 'POST',
+    path: '/devices/test',
+    title: 'Send a test push',
+    auth: 'user',
+    summary: 'Sends “UnioGate test 🎉” to every device registered by the signed-in user. Development servers only.',
+    whenToCall: 'While wiring up notifications, to check a device receives pushes.',
+    responses: [
+      {
+        id: 'ok',
+        status: 200,
+        label: 'Sent',
+        when: 'Sent to all your registered devices (silently skipped if none are registered).',
+        ui: 'Your device(s) should show the test notification within a few seconds.',
+        body: { sent: true },
+      },
+      {
+        id: 'not-available',
+        status: 404,
+        label: 'Not on this server',
+        when: 'Called against production, where this endpoint doesn’t exist.',
+        ui: 'Use a development/staging backend.',
+        body: '<html>Cannot POST /devices/test</html>',
+      },
+      unauthorized,
+    ],
+    notes: ['Every notification type and its payload is listed under Notifications.'],
+  },
+];
