@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { inviteEmail, otpEmail } from '@/lib/email-templates';
 
 type TemplateId = 'otp' | 'invite';
@@ -25,9 +25,16 @@ export function EmailPreview() {
   const frame = useRef<HTMLIFrameElement>(null);
 
   const meta = TEMPLATES.find((t) => t.id === template)!;
+  // Read the year in the browser: Cache Components forbids reading the clock while prerendering
+  const [year, setYear] = useState(2026);
+  useEffect(() => setYear(new Date().getFullYear()), []);
+
   const email = useMemo(
-    () => (template === 'otp' ? otpEmail(code, '/email-logo.png') : inviteEmail({ businessName, code }, '/email-logo.png')),
-    [template, code, businessName],
+    () =>
+      template === 'otp'
+        ? otpEmail(code, '/email-logo.png', year)
+        : inviteEmail({ businessName, code }, '/email-logo.png', year),
+    [template, code, businessName, year],
   );
 
   // Grow the iframe to fit the email, so there's a single scrollbar (the page's)

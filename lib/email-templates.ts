@@ -23,7 +23,7 @@ export interface RenderedEmail {
 const escapeHtml = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
-function baseLayout({ preheader, bodyHtml, logoUrl }: { preheader: string; bodyHtml: string; logoUrl: string }) {
+function baseLayout({ preheader, bodyHtml, logoUrl, year }: { preheader: string; bodyHtml: string; logoUrl: string; year: number }) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -57,7 +57,7 @@ function baseLayout({ preheader, bodyHtml, logoUrl }: { preheader: string; bodyH
                 <a href="mailto:${SUPPORT_EMAIL}" style="color:${BRAND.navy}; text-decoration:none;">${SUPPORT_EMAIL}</a>.
               </p>
               <p style="margin:0; font-size:12px; line-height:18px; color:${BRAND.muted};">
-                &copy; ${new Date().getFullYear()} UnioGate &middot; The stablecoin app for merchants.
+                &copy; ${year} UnioGate &middot; The stablecoin app for merchants.
               </p>
             </td>
           </tr>
@@ -78,7 +78,7 @@ const codeBox = (code: string) => `
       </tr>
     </table>`;
 
-export function otpEmail(code: string, logoUrl: string): RenderedEmail {
+export function otpEmail(code: string, logoUrl: string, year: number): RenderedEmail {
   const preheader = `Your UnioGate verification code is ${code}`;
   const bodyHtml = `
     <h1 style="margin:0 0 12px 0; font-size:22px; line-height:28px; font-weight:700; color:${BRAND.text};">Verify your account</h1>
@@ -89,10 +89,10 @@ export function otpEmail(code: string, logoUrl: string): RenderedEmail {
     <p style="margin:24px 0 0 0; font-size:14px; line-height:21px; color:${BRAND.muted};">
       This code expires in <strong style="color:${BRAND.text};">10 minutes</strong>. If you didn't request it, you can safely ignore this email &mdash; don't share the code with anyone.
     </p>`;
-  return { subject: 'UnioGate - Your verification code', preheader, html: baseLayout({ preheader: escapeHtml(preheader), bodyHtml, logoUrl }) };
+  return { subject: 'UnioGate - Your verification code', preheader, html: baseLayout({ preheader: escapeHtml(preheader), bodyHtml, logoUrl, year }) };
 }
 
-export function inviteEmail(opts: { businessName: string; code: string }, logoUrl: string): RenderedEmail {
+export function inviteEmail(opts: { businessName: string; code: string }, logoUrl: string, year: number): RenderedEmail {
   const name = escapeHtml(opts.businessName || 'a business');
   const preheader = `Join ${opts.businessName || 'a business'} on UnioGate as a sales representative`;
   const bodyHtml = `
@@ -108,6 +108,6 @@ export function inviteEmail(opts: { businessName: string; code: string }, logoUr
   return {
     subject: `You've been invited to join ${opts.businessName || 'a business'} on UnioGate`,
     preheader,
-    html: baseLayout({ preheader: escapeHtml(preheader), bodyHtml, logoUrl }),
+    html: baseLayout({ preheader: escapeHtml(preheader), bodyHtml, logoUrl, year }),
   };
 }
