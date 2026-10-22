@@ -67,6 +67,7 @@ export const SAMPLE_USER = {
   lastName: 'Obi',
   email: 'ada@example.com',
   phoneNumber: '+2348012345678',
+  imageUrl: 'https://res.cloudinary.com/uniogate/image/upload/v1729580000/avatars/ada.jpg' as string | null,
 };
 
 export const SAMPLE_BUSINESS_ID = 'd6a5ca8f-c7fb-49a1-8a36-b406df19a821';

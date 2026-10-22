@@ -42,6 +42,14 @@ export const onboarding: Endpoint[] = [
         rules: 'Any common format works. Stored as +234XXXXXXXXXX.',
       },
       {
+        name: 'imageUrl',
+        type: 'string',
+        required: false,
+        description: 'Profile photo. Upload the image to Cloudinary first, then send the secure_url it returns.',
+        example: 'https://res.cloudinary.com/uniogate/image/upload/v1729580000/avatars/ada.jpg',
+        rules: 'Full https:// URL, up to 2048 characters. Omit (or send "") for no photo.',
+      },
+      {
         name: 'inviteBusinessId',
         type: 'string',
         required: false,
@@ -55,6 +63,7 @@ export const onboarding: Endpoint[] = [
       lastName: 'Obi',
       country: 'NG',
       phoneNumber: '08012345678',
+      imageUrl: 'https://res.cloudinary.com/uniogate/image/upload/v1729580000/avatars/ada.jpg',
     },
     responses: [
       {
@@ -95,8 +104,12 @@ export const onboarding: Endpoint[] = [
         ui: 'Show “Enter a valid Nigerian phone number” under the phone field.',
         body: { error: 'Enter a valid Nigerian phone number' },
       },
-      validation('firstName', 'First name is required'),
+      validation('imageUrl', 'Image URL must be a full https:// URL', 'res.cloudinary.com/ada.jpg'),
       serverError('Failed to create profile'),
+    ],
+    notes: [
+      'Profile photo: upload to Cloudinary from the app, then pass its secure_url as imageUrl. The backend only stores the URL.',
+      'imageUrl comes back on the user object from Verify the login code and Create business. Show initials when it is null.',
     ],
   },
 
